@@ -240,27 +240,46 @@ util.resizeEye = function(eye, resizeWidth, resizeHeight) {
     return tempCanvas.getContext('2d').getImageData(0, 0, resizeWidth, resizeHeight);
 };
 
+util.updateOutOfBounds = function(outOfBounds) {
+    if (!this.outOfBounds) {
+        this.outOfBounds = Array(20).fill(0);
+    }
+    this.outOfBounds.push(outOfBounds);
+    if (this.outOfBounds.length > 20) {
+        this.outOfBounds.shift();
+    }
+};
+
+util.isOutOfBounds = function() {
+    if (!this.outOfBounds) {
+        return false;
+    }
+    return this.outOfBounds.reduce((a, b) => a + b, 0) > 4;
+}
+
 /**
  * Checks if the prediction is within the boundaries of the viewport and constrains it
  * @param  {Array} prediction [x,y] - predicted gaze coordinates
  * @return {Array} constrained coordinates
  */
 util.bound = function(prediction){
-    if(prediction.x < 0)
-        prediction.x = 0;
-    if(prediction.y < 0)
-        prediction.y = 0;
     var w = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
     var h = Math.max(document.documentElement.clientHeight, window.innerHeight || 0);
-    if(prediction.x > w){
-        prediction.x = w;
-    }
+    var outOfBounds = 0;
 
-    if(prediction.y > h)
-    {
-        prediction.y = h;
+    if (prediction.x > w || prediction.x < 0) {
+        outOfBounds = 1;
+        prediction.x = Math.min(w, Math.max(0, prediction.x));
     }
-    return prediction;
+    if (prediction.y > h || prediction.y < 0) {
+        outOfBounds = 1;
+        prediction.y = Math.min(h, Math.max(0, prediction.y));
+    }
+    
+    // Out of bounds should really only be 1 if the prediction is +-10% of the viewport since 
+    // gazing near the border will easily trigger this
+    this.updateOutOfBounds(outOfBounds);
+    return prediction
 };
 
 //not used !?
